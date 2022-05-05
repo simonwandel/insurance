@@ -1,7 +1,10 @@
+import json
 import streamlit as st
 import pandas as pd
 import numpy as np
 import pgeocode
+import requests
+from requests.structures import CaseInsensitiveDict
 
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -22,14 +25,26 @@ def changedPostalCode():
     st.session_state["lat"] = str(postalcode_data['latitude'])
     st.session_state["lon"] = str(postalcode_data['longitude'])
 
+def getElevation(lat, lon):
+    url = "https://api.opentopodata.org/v1/eudem25m?locations=51.875127,-3.341298"
+    response = requests.get(url).text
+    response_info = json.loads(response)
+    return response_info["results"][0]["elevation"]
+
 def calculate():
+    # set country of postal code to Germany
     nomi = pgeocode.Nominatim('de')
 
-    #nomi.query_postal_code(float(postalCode))
     postalcode_data = nomi.query_postal_code(postalCode)
+    lat = postalcode_data['latitude']
+    lon = postalcode_data['longitude']
+
+    # get elevation
+    elevation = getElevation(lat, lon)
+    factor_upcharge_elevation = 1
 
     # Create Point for entered postal code
-    location = Point(postalcode_data['latitude'], postalcode_data['longitude'])
+    location = Point(lat, lon)
 
     df = pd.DataFrame()
 
@@ -126,11 +141,16 @@ def calculate():
 
     model_results = pd.DataFrame(model.coef_, X.columns, columns=['Coeffcicients'])
 
+    if elevation < 10:
+        st.write('There is a higher risk for floodings due to low elevation.')
+        factor_upcharge_elevation = 1.5
+    else:
+        st. write('There is NO higher risk for floodings due to low elevation.')
     # making a prediction
     new_situation_predict = model.predict(np.array([[2022, 18], [2122, 18]]))
     st.write('Estimated risk for the next 100 years (from 2022 - 2122):')
     st.line_chart(new_situation_predict)
-    st.write('Calculated premium with AI: ', harvest*new_situation_predict[0])
+    st.write('Calculated premium with AI: ', harvest*new_situation_predict[0]*factor_upcharge_elevation)
 
 
 # load configurations from config.ini file
