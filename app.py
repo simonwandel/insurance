@@ -16,35 +16,74 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from configparser import ConfigParser
 
-def changedPostalCode():
-    nomi = pgeocode.Nominatim('de')
-    # get lat and lon with postal code
-    postalcode_data = nomi.query_postal_code(st.session_state['postalCode'])
+# load configurations from config.ini file
+config = ConfigParser()
+config.read('config.ini')
+start_year = int(config.get('configuration', 'start_year'))
+end_year = int(config.get('configuration', 'end_year'))
+start_month = int(config.get('configuration', 'start_month'))
+end_month = int(config.get('configuration', 'end_month'))
+avg_temperature = float(config.get('configuration', 'avg_temperature'))
+prcp_days = int(config.get('configuration', 'prcp_days'))
+prcp_amount = float(config.get('configuration', 'prcp_amount'))
 
-    # write lat and lon in form
-    st.session_state["lat"] = str(postalcode_data['latitude'])
-    st.session_state["lon"] = str(postalcode_data['longitude'])
+def changed_postal_code():
+    try:
+        nomi = pgeocode.Nominatim('de')
+        # get lat and lon with postal code
+        postalcode_data = nomi.query_postal_code(st.session_state['postalCode'])
 
-def getElevation(lat, lon):
-    url = "https://api.opentopodata.org/v1/eudem25m?locations=51.875127,-3.341298"
-    response = requests.get(url).text
-    response_info = json.loads(response)
-    return response_info["results"][0]["elevation"]
+        # write lat and lon in form
+        if(str(postalcode_data['latitude'])!="nan" and str(postalcode_data['longitude'])!="nan"):
+            st.session_state["lat"] = str(postalcode_data['latitude'])
+            st.session_state["lon"] = str(postalcode_data['longitude'])
+        else:
+            st.session_state["lat"] = ""
+            st.session_state["lon"] = ""
+            st.error("Postal code not valid.")
+    except Exception:
+        st.write("Couldn't get the geocoordinates from the postal code. An internal error occured. Please try it later again.")
+
+
+def get_elevation(lat, lon):
+    try:
+        url = "https://api.opentopodata.org/v1/eudem25m?locations=" + str(lat) + "," + str(lon)
+        response = requests.get(url).text
+        response_info = json.loads(response)
+        return response_info["results"][0]["elevation"]
+    except Exception:
+        st.write("Error while trying to get the elevation.")
+
+
+st.sidebar.title('Crop Insurance Calculator')
+st.sidebar.write('Welcome to the future of calculating crop insurance premiums. This example calculator is for open strawberry fields and focuses on the factor heavy rainfall.')
+area = st.sidebar.slider('area in m^2', min_value=5000, max_value=100000, value=5000)
+harvest = st.sidebar.slider('average harvest in last 5 years', min_value=5000, max_value=1000000, value=5000)
+postalCode = st.sidebar.text_input('Postal Code', on_change=changed_postal_code, key="postalCode")
+latitude = st.sidebar.text_input('Latitude', key='lat')
+longitude = st.sidebar.text_input('Longitude', key='lon')
+st.sidebar.write('Calculated premium without AI: ', harvest*0.07)
+    
 
 def calculate():
     # set country of postal code to Germany
-    nomi = pgeocode.Nominatim('de')
+    #nomi = pgeocode.Nominatim('de')
 
-    postalcode_data = nomi.query_postal_code(postalCode)
-    lat = postalcode_data['latitude']
-    lon = postalcode_data['longitude']
+    #postalcode_data = nomi.query_postal_code(postalCode)
+    try:
+        lat = float(latitude)
+        lon = float(longitude)
+        # get elevation
+        elevation = get_elevation(lat, lon)
+        factor_upcharge_elevation = 1
 
-    # get elevation
-    elevation = getElevation(lat, lon)
-    factor_upcharge_elevation = 1
+        # Create Point for entered postal code
+        location = Point(lat, lon)
+    except Exception:
+        st.write("Error occured. Make sure that lat and lon are in the right format.")
 
-    # Create Point for entered postal code
-    location = Point(lat, lon)
+    
+    
 
     df = pd.DataFrame()
 
@@ -136,45 +175,29 @@ def calculate():
     # doing linear regression
     model = LinearRegression()
     model.fit(X, y)
-    #model.intercept_
-    #model.coef_
 
     model_results = pd.DataFrame(model.coef_, X.columns, columns=['Coeffcicients'])
 
-    if elevation < 10:
+    if elevation < 20:
         st.write('There is a higher risk for floodings due to low elevation.')
-        factor_upcharge_elevation = 1.5
+        factor_upcharge_elevation = 1.1
     else:
         st. write('There is NO higher risk for floodings due to low elevation.')
     # making a prediction
     new_situation_predict = model.predict(np.array([[2022, 18], [2122, 18]]))
     st.write('Estimated risk for the next 100 years (from 2022 - 2122):')
     st.line_chart(new_situation_predict)
-    st.write('Calculated premium with AI: ', harvest*new_situation_predict[0]*factor_upcharge_elevation)
+    new_premium_text = 'Calculated premium with AI: ' + str(harvest*new_situation_predict[0]*factor_upcharge_elevation)
+    st.write(new_premium_text)
+    st.balloons()
 
-
-# load configurations from config.ini file
-config = ConfigParser()
-config.read('config.ini')
-start_year = int(config.get('configuration', 'start_year'))
-end_year = int(config.get('configuration', 'end_year'))
-start_month = int(config.get('configuration', 'start_month'))
-end_month = int(config.get('configuration', 'end_month'))
-avg_temperature = float(config.get('configuration', 'avg_temperature'))
-prcp_days = int(config.get('configuration', 'prcp_days'))
-prcp_amount = float(config.get('configuration', 'prcp_amount'))
+st.sidebar.button('Calculate', on_click=calculate)
 
 
 
-st.title('Crop Insurance Calculator')
-st.write('Welcome to the future of calculating crop insurance premiums. This example calculator is for open strawberry fields and focuses on the factor heavy rainfall.')
-area = st.slider('area in m^2', min_value=5000, max_value=100000, value=5000)
-harvest = st.slider('average harvest in last 5 years', min_value=5000, max_value=1000000, value=5000)
-postalCode = st.text_input('Postal Code', on_change=changedPostalCode, key="postalCode")
-latitude = st.text_input('Latitude', key='lat')
-longitude = st.text_input('Longitude', key='lon')
-st.write('Calculated premium without AI: ', harvest*0.07)
-st.button('Calculate', on_click=calculate)
+
+
+
 
 
 
