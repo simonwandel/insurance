@@ -27,6 +27,8 @@ avg_temperature = float(config.get('configuration', 'avg_temperature'))
 prcp_days = int(config.get('configuration', 'prcp_days'))
 prcp_amount = float(config.get('configuration', 'prcp_amount'))
 
+dict_locations = {'Hamburg':'20095','Kusterdingen':'72127','Munich':'80995', 'Stuttgart':'70173'}
+
 def changed_postal_code():
     try:
         nomi = pgeocode.Nominatim('de')
@@ -42,8 +44,17 @@ def changed_postal_code():
             st.session_state["lon"] = ""
             st.error("Postal code not valid.")
     except Exception:
-        st.write("Couldn't get the geocoordinates from the postal code. An internal error occured. Please try it later again.")
+        st.error("Couldn't get the geocoordinates from the postal code. An internal error occured. Please try it later again.")
 
+def changed_location():
+    if(location=='Hamburg'):
+        st.session_state["postalCode"] = '20095'
+    elif(location=='Kusterdingen'):
+        st.session_state["postalCode"] = '72127'
+    elif(location=='Munich'):
+        st.session_state["postalCode"] = '80995'
+    else: #stuttgart
+        st.session_state["postalCode"] = '70173'
 
 def get_elevation(lat, lon):
     try:
@@ -52,24 +63,19 @@ def get_elevation(lat, lon):
         response_info = json.loads(response)
         return response_info["results"][0]["elevation"]
     except Exception:
-        st.write("Error while trying to get the elevation.")
+        st.error("Error while trying to get the elevation.")
 
 
 st.sidebar.title('Crop Insurance Calculator')
 st.sidebar.write('Welcome to the future of calculating crop insurance premiums. This example calculator is for open strawberry fields and focuses on the factor heavy rainfall.')
-area = st.sidebar.slider('area in m^2', min_value=5000, max_value=100000, value=5000)
-harvest = st.sidebar.slider('average harvest in last 5 years', min_value=5000, max_value=1000000, value=5000)
-postalCode = st.sidebar.text_input('Postal Code', on_change=changed_postal_code, key="postalCode")
-latitude = st.sidebar.text_input('Latitude', key='lat')
-longitude = st.sidebar.text_input('Longitude', key='lon')
-st.sidebar.write('Calculated premium without AI: ', harvest*0.07)
-    
+harvest = st.sidebar.slider(label='average harvest in last 5 years', min_value=5000, max_value=1000000, value=5000)
+location = st.sidebar.selectbox(label='Location', options=['Hamburg', 'Kusterdingen', 'Munich', 'Stuttgart'])
+postalCode = st.sidebar.text_input(label='Postal Code', value=dict_locations[location], key="postalCode", disabled=True)
+changed_postal_code() # in order to autofill latitude and longitude
+latitude = st.sidebar.text_input(label='Latitude', key='lat', disabled=True)
+longitude = st.sidebar.text_input(label='Longitude', key='lon', disabled=True)    
 
 def calculate():
-    # set country of postal code to Germany
-    #nomi = pgeocode.Nominatim('de')
-
-    #postalcode_data = nomi.query_postal_code(postalCode)
     try:
         lat = float(latitude)
         lon = float(longitude)
@@ -80,10 +86,7 @@ def calculate():
         # Create Point for entered postal code
         location = Point(lat, lon)
     except Exception:
-        st.write("Error occured. Make sure that lat and lon are in the right format.")
-
-    
-    
+        st.write("Error occured. Make sure that lat and lon are in the right format.")    
 
     df = pd.DataFrame()
 
@@ -176,28 +179,19 @@ def calculate():
     model = LinearRegression()
     model.fit(X, y)
 
-    model_results = pd.DataFrame(model.coef_, X.columns, columns=['Coeffcicients'])
-
-    if elevation < 20:
-        st.write('There is a higher risk for floodings due to low elevation.')
-        factor_upcharge_elevation = 1.1
-    else:
-        st. write('There is NO higher risk for floodings due to low elevation.')
+    
     # making a prediction
     new_situation_predict = model.predict(np.array([[2022, 18], [2122, 18]]))
     st.write('Estimated risk for the next 100 years (from 2022 - 2122):')
     st.line_chart(new_situation_predict)
-    new_premium_text = 'Calculated premium with AI: ' + str(harvest*new_situation_predict[0]*factor_upcharge_elevation)
-    st.write(new_premium_text)
+
+    if elevation < 20:
+        st.warning('There is a higher risk for floodings due to low elevation.')
+        factor_upcharge_elevation = 1.1
+    else:
+        st.success('There is NO higher risk for floodings due to low elevation.')
+    new_premium_text = 'Calculated premium with AI: ' + str(round(harvest*new_situation_predict[0]*factor_upcharge_elevation, 2)) + ' €'
+    st.subheader(new_premium_text)
     st.balloons()
 
 st.sidebar.button('Calculate', on_click=calculate)
-
-
-
-
-
-
-
-
-
