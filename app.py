@@ -197,7 +197,7 @@ def calculate():
     
     # making a prediction
     new_situation_predict = model.predict(np.array([[2022, 18], [2100, 18]]))
-    st.write('Estimated risk for the next 100 years (from 2022 - 2122):')
+    st.write('Estimated risk for the next years until 2100:')
     st.line_chart(new_situation_predict)
 
     # if there's a low elevation it has an impact on the premium
