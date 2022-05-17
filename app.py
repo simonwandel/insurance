@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression
 from configparser import ConfigParser
 
 # set the page configuration
-st.set_page_config(page_title="Crop Insurance Calculator", page_icon="👨‍🌾", layout="centered", initial_sidebar_state="auto", menu_items=None)
+st.set_page_config(page_title="Crop Insurance Calculator", page_icon="👨‍🌾", layout="centered", initial_sidebar_state="expanded", menu_items=None)
 
 # load configurations from config.ini file
 config = ConfigParser()
