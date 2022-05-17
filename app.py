@@ -196,7 +196,7 @@ def calculate():
     model.fit(X, y)
     
     # making a prediction
-    new_situation_predict = model.predict(np.array([[2022, 18], [2122, 18]]))
+    new_situation_predict = model.predict(np.array([[2022, 18], [2100, 18]]))
     st.write('Estimated risk for the next 100 years (from 2022 - 2122):')
     st.line_chart(new_situation_predict)
 
