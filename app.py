@@ -178,7 +178,7 @@ def calculate():
     st.caption('y-axis: loss or not (1=loss, 0=no loss), x-axis: year')
     st.bar_chart(df['loss'])
     st.write('Heavy rainfall since 1900')
-    st.caption('y-axis: sum of precipitation of last 8 days in mm, x-axis: year')
+    st.caption('y-axis: sum of precipitation of last 8 days in mm (10dPrcp), x-axis: year')
     st.bar_chart(df['10dPrcp'])
     st.write('Average seasonal temperature since 1900')
     st.caption('y-axis: temperature in degrees Celsuis, x-axis: year')
