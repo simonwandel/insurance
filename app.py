@@ -74,7 +74,7 @@ st.sidebar.title('Crop Insurance Calculator')
 st.sidebar.write('Welcome to the future of calculating crop insurance premiums. This example calculator is for open strawberry fields and focuses on the factor heavy rainfall.')
 
 # user input fields
-harvest = st.sidebar.slider(label='average harvest in last 5 years', min_value=5000, max_value=1000000, value=5000)
+harvest = st.sidebar.slider(label='average harvest in last 5 years in EUR', min_value=5000, max_value=1000000, value=5000)
 location = st.sidebar.selectbox(label='Location', options=['Hamburg', 'Kusterdingen', 'Munich', 'Stuttgart'])
 postal_code = st.sidebar.text_input(label='Postal Code', value=dict_locations[location], key="postal_code", disabled=True)
 changed_postal_code() # in order to autofill latitude and longitude
@@ -175,10 +175,13 @@ def calculate():
 
     # display results
     st.write('Harvest losses since 1900')
+    st.caption('y-axis: loss or not (1=loss, 0=no loss), x-axis: year')
     st.bar_chart(df['loss'])
     st.write('Heavy rainfall since 1900')
+    st.caption('y-axis: sum of precipitation of last 8 days in mm, x-axis: year')
     st.bar_chart(df['10dPrcp'])
     st.write('Average seasonal temperature since 1900')
+    st.caption('y-axis: temperature in degrees Celsuis, x-axis: year')
     st.line_chart(df['tavg'])
 
     # displaying a plot
@@ -198,6 +201,7 @@ def calculate():
     # making a prediction
     new_situation_predict = model.predict(np.array([[2022, 18], [2100, 18]]))
     st.write('Estimated risk for the next years until 2100:')
+    st.caption('y-axis: risk of harvest loss due to heavy rainfall, x-axis: chronological sequence (0=year 2021, 1=year 2100)')
     st.line_chart(new_situation_predict)
 
     # if there's a low elevation it has an impact on the premium
